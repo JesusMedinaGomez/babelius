@@ -1,0 +1,993 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container my-4">
+  <!-- Título dinámico -->
+  <h1 class="mb-4">
+    {% if book %}Editar Libro{% else %}Añadir Libros{% endif %}
+  </h1>
+
+  {% if error %}
+  <div class="alert alert-danger" role="alert">{{ error }}</div>
+  {% endif %}
+
+  <form method="POST" id="books-form" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <!-- Contenedor dinámico de libros -->
+    <div id="books-container"></div>
+
+    <div class="d-flex gap-2 mt-3">
+      {% if not book %}
+      <button type="button" id="add-book-btn" class="btn btn-success">➕ Agregar libro</button>
+      {% endif %}
+      <button type="submit" class="btn btn-primary">
+        {% if book %}Actualizar Libro{% else %}Guardar todos los libros{% endif %}
+      </button>
+      {% if book %}
+      <a href="{% url 'read_books' %}" class="btn btn-secondary">Cancelar</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <!-- Lista visual (solo para creación) -->
+  {% if not book %}
+  <div class="border rounded p-3 mt-4">
+    <h5>Libros a guardar</h5>
+    <ul id="object-list" class="list-group"></ul>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ---------------------------
+     MODALES (los de siempre)
+--------------------------- -->
+
+<!-- Nuevo Estante -->
+<div class="modal fade" id="newShelfModal" tabindex="-1" aria-labelledby="newShelfLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="new-shelf-form" onsubmit="return false;">
+        <div class="modal-header">
+          <h5 class="modal-title" id="newShelfLabel">Nuevo Estante</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="text" id="shelf-name" class="form-control mb-2" placeholder="Nombre del estante">
+          <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" value="true" id="auto-name-checkbox">
+            <label class="form-check-label" for="auto-name-checkbox">Asignar nombre automáticamente</label>
+          </div>
+          <div id="shelf-error" class="text-danger mt-1" style="display:none;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="saveShelfBtn">Guardar Estante</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Nuevo Cajón -->
+<div class="modal fade" id="newDrawerModal" tabindex="-1" aria-labelledby="newDrawerLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="new-drawer-form" onsubmit="return false;">
+        <div class="modal-header">
+          <h5 class="modal-title" id="newDrawerLabel">Nuevo Cajón</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Elegir estante en el modal -->
+          <select id="drawer-shelf" class="form-select mb-2" required>
+            <option value="">Selecciona un estante</option>
+            {% for shelf in user_shelfs %}
+            <option value="{{ shelf.id }}">{{ shelf.name }}</option>
+            {% endfor %}
+          </select>
+          <div id="drawer-error" class="text-danger mt-1" style="display:none;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-dark" id="saveDrawerBtn">Guardar Cajón</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Nueva Clasificación -->
+<div class="modal fade" id="newClassificationModal" tabindex="-1" aria-labelledby="newClassificationLabel"
+  aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="new-classification-form" onsubmit="return false;">
+        <div class="modal-header">
+          <h5 class="modal-title" id="newClassificationLabel">Nueva Clasificación</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="text" id="classification-name" class="form-control" placeholder="Nombre de la clasificación">
+          <div id="classification-error" class="text-danger mt-1" style="display:none;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success" id="saveClassificationBtn">Guardar Clasificación</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Nuevo Género -->
+<div class="modal fade" id="newGenreModal" tabindex="-1" aria-labelledby="newGenreLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="new-genre-form" onsubmit="return false;">
+        <div class="modal-header">
+          <h5 class="modal-title" id="newGenreLabel">Nuevo Género</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Seleccionar clasificación dentro del modal -->
+          <select id="genre-classification" class="form-select mb-2" required>
+            <option value="">Selecciona una clasificación</option>
+            {% for classification in user_classifications %}
+            <option value="{{ classification.id }}">{{ classification.name }}</option>
+            {% endfor %}
+          </select>
+
+          <input type="text" id="genre-name" class="form-control" placeholder="Nombre del género">
+          <div id="genre-error" class="text-danger mt-1" style="display:none;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-warning" id="saveGenreBtn">Guardar Género</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Nuevo Autor -->
+<div class="modal fade" id="newAuthorModal" tabindex="-1" aria-labelledby="newAuthorLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="new-author-form" onsubmit="return false;">
+        <div class="modal-header">
+          <h5 class="modal-title" id="newAuthorLabel">Nuevo Autor</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body row g-3">
+          <div class="col-md-6">
+            <input type="text" id="author-first-name" class="form-control" placeholder="Nombre(s)">
+          </div>
+          <div class="col-md-6">
+            <input type="text" id="author-last-name" class="form-control" placeholder="Apellido(s)">
+          </div>
+          <div class="col-md-6">
+            <input type="number" id="author-birth-year" class="form-control" placeholder="Año de nacimiento">
+          </div>
+          <div class="col-md-6">
+            <input type="number" id="author-death-year" class="form-control" placeholder="Año de fallecimiento">
+          </div>
+          <div class="col-md-12">
+            <textarea id="author-biography" class="form-control" rows="3" placeholder="Biografía"></textarea>
+          </div>
+          <div class="col-md-12">
+            <textarea id="author-semblance" class="form-control" rows="3" placeholder="Semblanza"></textarea>
+          </div>
+          <div class="col-md-12">
+            <input type="file" id="author-image" class="form-control">
+          </div>
+          <div id="author-error" class="text-danger mt-2" style="display:none;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success" id="saveAuthorBtn">Guardar Autor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===================
+      BLOQUE (TEMPLATE)
+=================== -->
+<template id="book-template">
+  <div class="border rounded p-3 mb-3 book-block">
+    <div class="d-flex justify-content-between align-items-start mb-2">
+      <h5 class="mb-0">{% if book %}Editar Libro{% else %}Libro{% endif %}</h5>
+      {% if not book %}
+      <button type="button" class="btn btn-outline-danger btn-sm remove-book-btn">Eliminar</button>
+      {% endif %}
+    </div>
+
+    <div class="row g-2">
+      <div class="col-md-6">
+        <label class="form-label">Título</label>
+        <input type="text" class="form-control title-input" placeholder="Escribe el título" name="title"
+          value="{{ book.title|default:'' }}">
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Subtítulo</label>
+        <input type="text" class="form-control subtitle-input" placeholder="Escribe el subtítulo" name="subtitle"
+          value="{{ book.subtitle|default:'' }}">
+      </div>
+
+      <div class="col-md-6 mt-2">
+        <label class="form-label">Editorial</label>
+        <input type="text" class="form-control editorial-input" placeholder="Escribe la editorial" name="editorial"
+          value="{{ book.editorial|default:'' }}">
+      </div>
+
+      <!-- Estante (con +) -->
+      <div class="col-md-6 mt-2">
+        <label class="form-label">Estante</label>
+        <div class="input-group">
+          <select class="form-select shelf-select" name="shelf">
+            <option value="">--Selecciona un estante--</option>
+            {% for shelf in user_shelfs %}
+            <option value="{{ shelf.id }}" {% if book and book.shelf_id == shelf.id %}selected{% endif %}>
+              {{ shelf.name }}
+            </option>
+            {% endfor %}
+          </select>
+          <button type="button" class="btn btn-warning open-new-shelf" data-bs-toggle="modal"
+            data-bs-target="#newShelfModal">+</button>
+        </div>
+      </div>
+
+      <!-- Cajón (dependiente del estante, con +) -->
+      <div class="col-md-6 mt-2">
+        <label class="form-label">Cajón</label>
+        <div class="input-group">
+          <select class="form-select drawer-select" name="drawer">
+            <option value="">--Selecciona un cajón--</option>
+            {% for drawer in user_drawers %}
+            <option value="{{ drawer.id }}" {% if book and book.drawer_id == drawer.id %}selected{% endif %}>
+              {{ drawer.name }}
+            </option>
+            {% endfor %}
+          </select>
+          <button type="button" class="btn btn-warning open-new-drawer" data-bs-toggle="modal"
+            data-bs-target="#newDrawerModal">+</button>
+        </div>
+      </div>
+
+      <!-- Autor (con +) -->
+      <div class="col-md-6 mt-2">
+        <label class="form-label">Autor</label>
+        <div class="input-group">
+          <select class="form-select author-select" name="author">
+            <option value="">--Selecciona un autor--</option>
+            {% for author in user_authors %}
+            <option value="{{ author.id }}" {% if book and book.author_id == author.id %}selected{% endif %}>
+              {{ author.first_name }} {{ author.last_name }}
+            </option>
+            {% endfor %}
+          </select>
+          <button type="button" class="btn btn-warning open-new-author" data-bs-toggle="modal"
+            data-bs-target="#newAuthorModal">+</button>
+        </div>
+      </div>
+
+      <!-- Clasificación (con +) -->
+      <div class="col-md-6 mt-2">
+        <label class="form-label">Clasificación</label>
+        <div class="input-group">
+          <select class="form-select classification-select" name="classification">
+            <option value="">--Selecciona una clasificación--</option>
+            {% for classification in user_classifications %}
+            <option value="{{ classification.id }}" {% if book and book.classification_id == classification.id %}selected{% endif %}>
+              {{ classification.name }}
+            </option>
+            {% endfor %}
+          </select>
+          <button type="button" class="btn btn-warning open-new-classification" data-bs-toggle="modal"
+            data-bs-target="#newClassificationModal">+</button>
+        </div>
+      </div>
+
+      <!-- Género (dependiente de clasificación, con +) -->
+      <div class="col-md-6 mt-2">
+        <label class="form-label">Género</label>
+        <div class="input-group">
+          <select class="form-select genre-select" name="genre">
+            <option value="">--Selecciona un género--</option>
+            {% for genre in user_genres %}
+            <option value="{{ genre.id }}" {% if book and book.genre_id == genre.id %}selected{% endif %}>
+              {{ genre.name }}
+            </option>
+            {% endfor %}
+          </select>
+          <button type="button" class="btn btn-warning open-new-genre" data-bs-toggle="modal"
+            data-bs-target="#newGenreModal">+</button>
+        </div>
+      </div>
+
+      <div class="col-md-6 mt-2">
+        <label class="form-label">Volumen</label>
+        <input type="text" class="form-control volume-input" placeholder="Ej: 1, 2, 3..." name="volume"
+          value="{{ book.volume|default:'' }}">
+      </div>
+
+      <div class="col-md-6 mt-2">
+        <label class="form-label">Año de publicación</label>
+        <input type="number" class="form-control publication-year-input" placeholder="Ej: 2025" name="publication_year"
+          min="0" value="{{ book.publication_date.year|default:'' }}">
+      </div>
+
+      <div class="col-md-6 mt-2">
+        <label class="form-label">Tipo de cubierta</label>
+        <select class="form-select cover-select" name="cover">
+          <option value="" disabled>--Selecciona una cubierta--</option>
+          {% for value, label in COVERS %}
+          <option value="{{ value }}" {% if book.cover == value %}selected{% endif %}>
+            {{ label }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-6 mt-2">
+        <label class="form-label">Archivo PDF</label>
+        <input type="file" class="form-control pdf-file-input" name="pdf_file">
+        {% if book and book.pdf_file %}
+        <small class="text-muted">Actual: {{ book.pdf_file.name }}</small>
+        {% endif %}
+      </div>
+
+      <div class="col-md-6 mt-2">
+        <label class="form-label">Imagen de portada</label>
+        <input type="file" class="form-control image-input" name="image">
+        {% if book and book.image %}
+        <small class="text-muted">Actual: {{ book.image.name }}</small>
+        {% endif %}
+      </div>
+
+      <div class="col-md-6 mt-2">
+        <label class="form-label">ISBN</label>
+        <input type="text" class="form-control isbn-input" placeholder="Ej: 978-3-16-148410-0" name="isbn"
+          value="{{ book.isbn|default:'' }}">
+      </div>
+
+      <div class="col-md-6 mt-2">
+        <label class="form-label">DOI</label>
+        <input type="text" class="form-control doi-input" placeholder="Ej: 978-3-16-148410-0" name="doi"
+          value="{{ book.doi|default:'' }}">
+      </div>
+
+      <div class="col-md-6 mt-2">
+        <label class="form-label">Número de páginas</label>
+        <input type="number" class="form-control pages-input" placeholder="Ej: 350" name="pages" min="1"
+          value="{{ book.page_count|default:'' }}">
+      </div>
+
+      <div class="col-md-6 mt-2">
+        <label class="form-label">Idioma</label>
+        <select class="form-select language-select" name="language">
+          <option value="">--Selecciona un idioma--</option>
+          {% for code, name in languages %}
+          <option value="{{ code }}" {% if book.language == code %}selected{% endif %}>
+            {{ name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>  
+
+      <div class="col-md-12 mt-2">
+        <label class="form-label">Sinopsis</label>
+        <textarea class="form-control synopsis-input" rows="2" placeholder="Sinopsis del libro"
+          name="synopsis">{{ book.synopsis|default:'' }}</textarea>
+      </div>
+
+      <div class="col-md-6 mt-2">
+        <label class="form-label">Serie / Colección</label>
+        <input type="text" class="form-control series-input" placeholder="Ej: Colección Clásicos" name="series"
+          value="{{ book.series|default:'' }}">
+      </div>
+
+      <div class="col-md-6 mt-2">
+        <label class="form-label">Traductor</label>
+        <input type="text" class="form-control translator-input" placeholder="Ej: Juan Pérez" name="translator"
+          value="{{ book.translator|default:'' }}">
+      </div>
+
+      <div class="col-md-6 mt-2">
+        <label class="form-label">Editor / Compilador</label>
+        <input type="text" class="form-control editor-input" placeholder="Ej: María López" name="editor_compiler"
+          value="{{ book.editor|default:'' }}">
+      </div>
+
+      <div class="col-md-6 mt-2">
+        <label class="form-label">URL</label>
+        <input type="url" class="form-control url-input" placeholder="Ej: https://ejemplo.com/libro" name="url"
+          value="{{ book.url|default:'' }}">
+      </div>
+    </div>  <!-- ← ESTE CIERRA EL <div class="row g-2"> -->
+  </div>  <!-- ← ESTE CIERRA EL <div class="border rounded p-3 mb-3 book-block"> -->
+</template>
+
+<!-- Modal de advertencia -->
+<div class="modal fade" id="validationModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-warning">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title">¡Corrige los errores!</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <ul id="validation-errors" class="mb-0"></ul>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-warning" data-bs-dismiss="modal">Aceptar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  // ---------- Estado global / helpers ----------
+  const booksContainer = document.getElementById('books-container');
+  const bookTemplate = document.getElementById('book-template').content;
+  const csrfToken = '{{ csrf_token }}';
+  const isUpdateMode = {% if book %}true{% else %} false{% endif %};
+
+  let lastOpenBtn = null;
+  let activeBlock = null;
+  let activeBlockOriginalShelf = null;
+  let activeBlockOriginalClassification = null;
+
+  function createOption(id, text, selected = false) {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = text;
+    if (selected) opt.selected = true;
+    return opt;
+  }
+
+  function addOptionIfNotExists(selectEl, id, text, selectIt = false) {
+    if (!selectEl) return;
+    if ([...selectEl.options].some(o => o.value === String(id))) {
+      if (selectIt) selectEl.value = id;
+      return;
+    }
+    const opt = createOption(id, text, selectIt);
+    selectEl.appendChild(opt);
+  }
+
+  function loadDrawersForBlock(shelfId, block, selectAndKeep = null) {
+    const drawerSelect = block.querySelector('.drawer-select');
+    drawerSelect.innerHTML = '<option value="">--Selecciona un cajón--</option>';
+    if (!shelfId) {
+      drawerSelect.disabled = true;
+      return;
+    }
+    fetch(`/ajax/load-drawers/?shelf_id=${shelfId}`)
+      .then(res => res.json())
+      .then(data => {
+        data.forEach(d => drawerSelect.appendChild(createOption(d.id, d.name)));
+        drawerSelect.disabled = false;
+        if (selectAndKeep) drawerSelect.value = selectAndKeep;
+      });
+  }
+
+  function loadGenresForBlock(classificationId, block, selectAndKeep = null) {
+    const genreSelect = block.querySelector('.genre-select');
+    genreSelect.innerHTML = '<option value="">--Selecciona un género--</option>';
+    if (!classificationId) {
+      genreSelect.disabled = true;
+      return;
+    }
+    fetch(`/ajax/load-genres/?classification_id=${classificationId}`)
+      .then(res => res.json())
+      .then(data => {
+        data.forEach(g => genreSelect.appendChild(createOption(g.id, g.name)));
+        genreSelect.disabled = false;
+        if (selectAndKeep) genreSelect.value = selectAndKeep;
+      });
+  }
+
+  function validateBookBlock(block) {
+    let valid = true;
+    let errors = [];
+
+    const title = block.querySelector('.title-input').value.trim();
+    if (!title) { valid = false; errors.push('El título es obligatorio'); }
+
+    const editorial = block.querySelector('.editorial-input').value.trim();
+    if (!editorial) { valid = false; errors.push('La editorial es obligatoria'); }
+
+    const author = block.querySelector('.author-select').value;
+    if (!author) { valid = false; errors.push('Debes seleccionar un autor'); }
+
+    const classification = block.querySelector('.classification-select').value;
+    if (!classification) { valid = false; errors.push('Debes seleccionar una clasificación'); }
+
+    const volume = block.querySelector('.volume-input').value.trim();
+    if (volume && !/^\d+$/.test(volume)) { valid = false; errors.push('El volumen debe ser un número entero'); }
+
+    // --- Validación páginas / PDF ---
+    const pdfFile = block.querySelector('.pdf-file-input')?.files[0];
+    const pageCountInput = block.querySelector('.pages-input');
+    const pageCount = pageCountInput?.value.trim();
+
+
+
+    // --- Validación año ---
+    const year = block.querySelector('.publication-year-input').value.trim();
+    if (!year) {
+        valid = false;
+        errors.push('El año de publicación es obligatorio');
+    } else if (!/^-?\d+$/.test(year)) {
+        valid = false;
+        errors.push('El año de publicación debe ser un número entero');
+    } else {
+        const yearNum = parseInt(year, 10);
+        const minYear = -3200;
+        const maxYear = new Date().getFullYear();
+        if (yearNum < minYear || yearNum > maxYear) {
+            valid = false;
+            errors.push(`El año de publicación debe estar entre ${minYear} y ${maxYear}`);
+        }
+    }
+
+    const cover = block.querySelector('.cover-select').value;
+    if (!cover) { valid = false; errors.push('Debes seleccionar un tipo de cubierta'); }
+
+    const url = block.querySelector('.url-input')?.value.trim();
+    if (url && !/^https?:\/\/[^\s]+$/.test(url)) { 
+        valid = false; 
+        errors.push('La URL no es válida'); 
+    }
+
+    return { valid, errors };
+}
+
+  function addBookBlock() {
+  // En modo update, solo permitimos un bloque
+  if (isUpdateMode && booksContainer.querySelector('.book-block')) {
+    return;
+  }
+
+  // Validar último bloque antes de añadir otro (solo en create)
+  const lastBlock = booksContainer.querySelector('.book-block:last-child');
+  if (lastBlock && !isUpdateMode) {
+    const validation = validateBookBlock(lastBlock);
+    if (!validation.valid) {
+      const ul = document.getElementById('validation-errors');
+      ul.innerHTML = '';
+      validation.errors.forEach(err => {
+        const li = document.createElement('li');
+        li.textContent = err;
+        ul.appendChild(li);
+      });
+      const modal = new bootstrap.Modal(document.getElementById('validationModal'));
+      modal.show();
+      return;
+    }
+  }
+
+  // Clonar el template
+  const clone = document.importNode(bookTemplate, true);
+  const block = clone.querySelector('.book-block');
+
+  // Dependencia: Estante → Cajones
+  const shelfSelect = block.querySelector('.shelf-select');
+  shelfSelect.addEventListener('change', () => {
+    loadDrawersForBlock(shelfSelect.value, block);
+  });
+
+  // Dependencia: Clasificación → Géneros
+  const classificationSelect = block.querySelector('.classification-select');
+  classificationSelect.addEventListener('change', () => {
+    loadGenresForBlock(classificationSelect.value, block);
+  });
+
+  // Si se sube PDF → se marca cubierta como "virtual"
+  const pdfInput = block.querySelector('.pdf-file-input');
+  const coverSelect = block.querySelector('.cover-select');
+  pdfInput.addEventListener('change', () => {
+    if (pdfInput.files.length > 0) {
+      coverSelect.value = 'virtual';
+    }
+  });
+
+  // Botón eliminar bloque (solo en create)
+  if (!isUpdateMode) {
+    block.querySelector('.remove-book-btn').addEventListener('click', () => {
+      block.remove();
+    });
+  }
+
+  // Insertar en el contenedor
+  booksContainer.appendChild(clone);
+
+  // Si es update, recargar cajones y géneros con el valor guardado
+  if (isUpdateMode) {
+    const shelfId = shelfSelect.value;
+    const classificationId = classificationSelect.value;
+
+    if (shelfId) {
+      const drawerId = '{{ book.drawer_id|default:"" }}';
+      loadDrawersForBlock(shelfId, block, drawerId);
+    }
+    if (classificationId) {
+      const genreId = '{{ book.genre_id|default:"" }}';
+      loadGenresForBlock(classificationId, block, genreId);
+    }
+  }
+}
+
+
+  // Solo agregar el botón de "Agregar libro" si no estamos en modo update
+  if (!isUpdateMode) {
+    document.getElementById('add-book-btn').addEventListener('click', addBookBlock);
+  }
+
+  // Inicializar con un bloque
+  addBookBlock();
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.open-new-shelf, .open-new-drawer, .open-new-classification, .open-new-genre, .open-new-author');
+    if (!btn) return;
+    lastOpenBtn = btn;
+    activeBlock = btn.closest('.book-block');
+    activeBlockOriginalShelf = activeBlock ? (activeBlock.querySelector('.shelf-select').value || '') : '';
+    activeBlockOriginalClassification = activeBlock ? (activeBlock.querySelector('.classification-select').value || '') : '';
+  });
+
+  const modals = [
+    { id: 'newDrawerModal', error: 'drawer-error' },
+    { id: 'newGenreModal', error: 'genre-error' },
+    { id: 'newShelfModal', error: 'shelf-error' },
+    { id: 'newClassificationModal', error: 'classification-error' },
+    { id: 'newAuthorModal', error: 'author-error' }
+  ];
+  modals.forEach(m => {
+    document.getElementById(m.id).addEventListener('show.bs.modal', () => {
+      document.getElementById(m.error).style.display = 'none';
+    });
+  });
+
+  // ---------- Lógica para guardar en los modales ----------
+  document.getElementById('saveShelfBtn').addEventListener('click', function () {
+    const shelfName = document.getElementById('shelf-name').value.trim();
+    const autoNameChecked = document.getElementById('auto-name-checkbox').checked;
+    const errorEl = document.getElementById('shelf-error');
+
+    if (!shelfName && !autoNameChecked) {
+      errorEl.textContent = 'Debes ingresar un nombre o marcar la opción de nombre automático.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('name', shelfName);
+    formData.append('auto', autoNameChecked);
+
+    fetch("{% url 'crear_shelf_modal' %}", {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrfToken },
+      body: formData
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Actualiza los selectores del formulario de libro principal
+          document.querySelectorAll('.shelf-select').forEach(select => {
+            const opt = createOption(data.id, data.name);
+            select.appendChild(opt);
+          });
+
+          // 👉 Agrega la nueva opción al selector dentro del modal de Cajones
+          const drawerShelfSelect = document.getElementById('drawer-shelf');
+          if (drawerShelfSelect) {
+            const newDrawerOption = createOption(data.id, data.name);
+            drawerShelfSelect.appendChild(newDrawerOption);
+          }
+
+          if (activeBlock) {
+            activeBlock.querySelector('.shelf-select').value = data.id;
+            loadDrawersForBlock(data.id, activeBlock);
+          }
+          bootstrap.Modal.getInstance(document.getElementById('newShelfModal')).hide();
+        } else {
+          errorEl.textContent = data.error;
+          errorEl.style.display = 'block';
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        errorEl.textContent = 'Ocurrió un error inesperado.';
+        errorEl.style.display = 'block';
+      });
+  });
+
+  document.getElementById('saveDrawerBtn').addEventListener('click', function () {
+    const shelfId = document.getElementById('drawer-shelf').value;
+    const errorEl = document.getElementById('drawer-error');
+
+    if (!shelfId) {
+      errorEl.textContent = 'Debes seleccionar un estante.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    fetch("{% url 'crear_drawer_modal' %}", {
+      method: 'POST',
+      headers: { 'X-SrfToken': csrfToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shelf_id: shelfId })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          if (activeBlock) {
+            addOptionIfNotExists(activeBlock.querySelector('.drawer-select'), data.id, data.name, true);
+            bootstrap.Modal.getInstance(document.getElementById('newDrawerModal')).hide();
+          }
+        } else {
+          errorEl.textContent = data.error;
+          errorEl.style.display = 'block';
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        errorEl.textContent = 'Ocurrió un error inesperado.';
+        errorEl.style.display = 'block';
+      });
+  });
+
+  document.getElementById('saveClassificationBtn').addEventListener('click', function () {
+    const classificationName = document.getElementById('classification-name').value.trim();
+    const errorEl = document.getElementById('classification-error');
+
+    if (!classificationName) {
+      errorEl.textContent = 'El nombre de la clasificación es obligatorio.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    fetch("{% url 'crear_classification_modal' %}", {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name: classificationName })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.querySelectorAll('.classification-select').forEach(select => {
+            const opt = createOption(data.id, data.name);
+            select.appendChild(opt);
+          });
+
+          // 👉 Agrega la nueva opción al selector dentro del modal de Géneros
+          const genreClassificationSelect = document.getElementById('genre-classification');
+          if (genreClassificationSelect) {
+            const newGenreOption = createOption(data.id, data.name);
+            genreClassificationSelect.appendChild(newGenreOption);
+          }
+
+          if (activeBlock) {
+            activeBlock.querySelector('.classification-select').value = data.id;
+            loadGenresForBlock(data.id, activeBlock);
+          }
+          bootstrap.Modal.getInstance(document.getElementById('newClassificationModal')).hide();
+        } else {
+          errorEl.textContent = data.error;
+          errorEl.style.display = 'block';
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        errorEl.textContent = 'Ocurrió un error inesperado.';
+        errorEl.style.display = 'block';
+      });
+  });
+
+  document.getElementById('saveGenreBtn').addEventListener('click', function () {
+    const classificationId = document.getElementById('genre-classification').value;
+    const genreName = document.getElementById('genre-name').value.trim();
+    const errorEl = document.getElementById('genre-error');
+
+    if (!classificationId || !genreName) {
+      errorEl.textContent = 'Debes seleccionar una clasificación y escribir un nombre.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    fetch("{% url 'crear_gender_modal' %}", {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ classification_id: classificationId, name: genreName })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          if (activeBlock) {
+            addOptionIfNotExists(activeBlock.querySelector('.genre-select'), data.id, data.name, true);
+            bootstrap.Modal.getInstance(document.getElementById('newGenreModal')).hide();
+          }
+        } else {
+          errorEl.textContent = data.error;
+          errorEl.style.display = 'block';
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        errorEl.textContent = 'Ocurrió un error inesperado.';
+        errorEl.style.display = 'block';
+      });
+  });
+
+  document.getElementById('saveAuthorBtn').addEventListener('click', function () {
+    const form = document.getElementById('new-author-form');
+    const formData = new FormData(form);
+
+    const errorEl = document.getElementById('author-error');
+    const firstName = document.getElementById('author-first-name').value.trim();
+    const lastName = document.getElementById('author-last-name').value.trim();
+
+    if (!firstName || !lastName) {
+      errorEl.textContent = 'El nombre y el apellido son obligatorios.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    formData.append('first_name', firstName);
+    formData.append('last_name', lastName);
+    formData.append('birth_year', document.getElementById('author-birth-year').value);
+    formData.append('death_year', document.getElementById('author-death-year').value);
+    formData.append('biography', document.getElementById('author-biography').value);
+    formData.append('semblance', document.getElementById('author-semblance').value);
+    if (document.getElementById('author-image').files.length > 0) {
+      formData.append('image', document.getElementById('author-image').files[0]);
+    }
+
+    fetch("{% url 'crear_author_modal' %}", {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrfToken },
+      body: formData,
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.querySelectorAll('.author-select').forEach(select => {
+            const opt = createOption(data.id, data.name);
+            select.appendChild(opt);
+          });
+          if (activeBlock) {
+            activeBlock.querySelector('.author-select').value = data.id;
+          }
+          bootstrap.Modal.getInstance(document.getElementById('newAuthorModal')).hide();
+          form.reset();
+        } else {
+          errorEl.textContent = data.error;
+          errorEl.style.display = 'block';
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        errorEl.textContent = 'Ocurrió un error inesperado.';
+        errorEl.style.display = 'block';
+      });
+  });
+
+  // ---------- SUBMIT CORRECTO: TODOS LOS LIBROS A LA VEZ ----------
+  document.getElementById('books-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    console.log("=== FORMULARIO ENVIADO ===");
+
+    const blocks = booksContainer.querySelectorAll('.book-block');
+    let valid = true;
+    const errors = [];
+    const formData = new FormData();
+
+    // SOLUCIÓN CORREGIDA: Determinar la URL de forma segura
+    const url = {% if book %}"{% url 'update_book' book.pk %}"{% else %}"{% url 'create_book' %}"{% endif %};
+  console.log("URL de envío:", url);
+
+  blocks.forEach((block, idx) => {
+    console.log(`Procesando bloque ${idx}`);
+    const validation = validateBookBlock(block);
+    if (!validation.valid) {
+      valid = false;
+      validation.errors.forEach(err => errors.push(`Libro ${idx + 1}: ${err}`));
+    }
+
+    // Solo agregar índices en modo creación
+    const prefix = {% if book %}''{% else %}`${idx}_`{% endif %};
+  console.log(`Prefijo para bloque ${idx}: "${prefix}"`);
+
+  // Campos básicos
+  const title = block.querySelector('.title-input').value;
+  const editorial = block.querySelector('.editorial-input').value;
+  console.log(`Título: ${title}, Editorial: ${editorial}`);
+
+  formData.append(`${prefix}title`, title);
+  formData.append(`${prefix}subtitle`, block.querySelector('.subtitle-input').value);
+  formData.append(`${prefix}editorial`, editorial);
+  formData.append(`${prefix}shelf`, block.querySelector('.shelf-select').value);
+  formData.append(`${prefix}drawer`, block.querySelector('.drawer-select').value);
+  formData.append(`${prefix}author`, block.querySelector('.author-select').value);
+  formData.append(`${prefix}classification`, block.querySelector('.classification-select').value);
+  formData.append(`${prefix}genre`, block.querySelector('.genre-select').value);
+  formData.append(`${prefix}volume`, block.querySelector('.volume-input').value);
+  formData.append(`${prefix}publication_year`, block.querySelector('.publication-year-input').value);
+  formData.append(`${prefix}cover`, block.querySelector('.cover-select').value);
+  formData.append(`${prefix}pages`, block.querySelector('.pages-input').value);
+  formData.append(`${prefix}synopsis`, block.querySelector('.synopsis-input').value);
+  formData.append(`${prefix}language`, block.querySelector('.language-select').value);
+  formData.append(`${prefix}isbn`, block.querySelector('.isbn-input').value);
+  formData.append(`${prefix}doi`, block.querySelector('.doi-input').value);
+  formData.append(`${prefix}series`, block.querySelector('.series-input').value );
+  formData.append(`${prefix}translator`, block.querySelector('.translator-input').value);
+  formData.append(`${prefix}editor_compiler`, block.querySelector('.editor-input').value);
+  formData.append(`${prefix}url`, block.querySelector('.url-input').value);
+
+  const pdf = block.querySelector('.pdf-file-input').files[0];
+  if (pdf) {
+    console.log(`PDF encontrado para bloque ${idx}`);
+    formData.append(`${prefix}pdf_file`, pdf);
+  }
+
+  const image = block.querySelector('.image-input').files[0];
+  if (image) {
+    console.log(`Imagen encontrada para bloque ${idx}`);
+    formData.append(`${prefix}image`, image);
+  }
+  });
+
+  // Mostrar todos los datos del FormData en consola
+  console.log("=== DATOS DEL FORMULARIO ===");
+  for (let pair of formData.entries()) {
+    console.log(pair[0] + ': ' + pair[1]);
+  }
+
+  if (!valid) {
+    console.log("Errores de validación:", errors);
+    const ul = document.getElementById('validation-errors');
+    ul.innerHTML = '';
+    errors.forEach(err => {
+      const li = document.createElement('li');
+      li.textContent = err;
+      ul.appendChild(li);
+    });
+    new bootstrap.Modal(document.getElementById('validationModal')).show();
+    return;
+  }
+
+  console.log("Enviando datos al servidor...");
+  fetch(url, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': csrfToken },
+    body: formData
+  })
+    .then(res => {
+      console.log("Respuesta recibida:", res);
+      if (res.redirected) {
+        console.log("Redirigiendo a:", res.url);
+        window.location.href = res.url;
+      } else {
+        return res.text().then(text => {
+          console.log("Respuesta del servidor:", text);
+        });
+      }
+    })
+    .catch(err => {
+      console.error("Error en fetch:", err);
+    });
+});
+</script>
+{% endblock %}

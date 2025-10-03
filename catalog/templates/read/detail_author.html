@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="detail-container mx-auto p-4" style="max-width: 800px;">
+    <h1 class="mb-4 border-bottom pb-2">{{ title }}</h1>
+
+    <div class="fields mt-3">
+        {% for label, value, name in fields %}
+        <div class="field mb-3">
+            <strong>{{ label }}:</strong> {{ value|default:"No definido" }}
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if related_books %}
+    <div class="related-books mt-4">
+        <h2 class="border-bottom pb-1">Obra</h2>
+        <ul class="list-group list-group-flush mt-2">
+            {% for book in related_books %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                {{ book.title }}
+                <a href="{% url 'detail_book' book.pk %}" class="btn btn-sm btn-outline-secondary">Ver detalles</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="mt-4 text-end">
+        <a href="{% url 'read_authors' %}" class="btn btn-secondary btn-lg">
+            <i class="bi bi-arrow-left-circle"></i> Volver a la lista
+        </a>
+    </div>
+</div>
+{% endblock %}

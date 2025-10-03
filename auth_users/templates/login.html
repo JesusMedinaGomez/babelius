@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Crear una cuenta</h1>
+
+{% if error %}
+    <p style="color:red">{{ error }}</p>
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+
+    <p>
+        <label for="username">Usuario:</label>
+        <input type="text" name="username" id="username">
+    </p>
+
+    <p>
+        <label for="password1">Contraseña:</label>
+        <input type="password" name="password" id="password">
+    </p>
+
+    <div>
+        <button type="submit">Iniciar sesión</button>
+        <a href="/auth/crear_cuenta">¿Aún no tienes una cuenta?</a>
+    </div>
+</form>
+
+{% endblock %}

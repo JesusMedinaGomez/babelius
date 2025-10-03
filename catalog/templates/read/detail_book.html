@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="detail-container mx-auto p-4" style="max-width: 800px;">
+    <h1 class="mb-4 border-bottom pb-2">{{ title }}</h1>
+
+    <div class="fields mt-3">
+        {% for label, value, name in fields %}
+            {% if name != 'user' %}
+                <div class="field mb-3">
+                    <strong>{{ label }}:</strong>
+                    {% if name == 'pdf_file' %}
+                        {% if value %}
+                            <a href="{{ value }}" target="_blank" class="btn btn-outline-primary btn-sm">Ver PDF</a>
+                        {% else %}
+                            <em>No definido</em>
+                        {% endif %}
+                    {% else %}
+                        {{ value|default:"No definido" }}
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    {% if apa_citation %}
+    <div class="apa-generator mt-4 p-3 border rounded">
+        <h2 class="border-bottom pb-1 mb-3">Bibliografía APA</h2>
+        <input type="text" readonly class="form-control apa-text" value="{{ apa_citation }}">
+        <button class="btn btn-sm btn-outline-primary mt-1 copy-btn">Copiar</button>
+    </div>
+    {% endif %}
+
+    <div class="mt-4 text-end">
+        <a href="{% url 'read_books' %}" class="btn btn-secondary btn-lg">
+            <i class="bi bi-arrow-left-circle"></i> Volver a la lista
+        </a>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const copyButtons = document.querySelectorAll('.copy-btn');
+    copyButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const input = this.previousElementSibling;
+            input.select();
+            input.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(input.value).then(() => {
+                this.textContent = 'Copiado!';
+                setTimeout(() => { this.textContent = 'Copiar'; }, 2000);
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

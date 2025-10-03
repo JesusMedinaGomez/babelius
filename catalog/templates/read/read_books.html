@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<h1 class="mb-4">{{ title }}</h1>
+
+{% if create_url_name %}
+<div class="mb-4 d-flex justify-content-end">
+    <a href="{% url create_url_name %}" class="btn btn-success btn-lg">
+        <i class="bi bi-plus-lg"></i> Crear {{ title_singular }}
+    </a>
+</div>
+{% endif %}
+
+<form method="GET" action="{% url 'read_books' %}">
+    <div class="row g-3 mb-4 align-items-end">
+        <div class="col-md-6 col-12">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" name="search" id="searchInput" class="form-control form-control-lg" 
+                       placeholder="Buscar libro por título..." value="{{ search_query }}">
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <label for="classificationFilter" class="form-label">Clasificación</label>
+            <select name="classification" id="classificationFilter" class="form-select form-select-lg" onchange="this.form.submit()">
+                <option value="">-- Todas las clasificaciones --</option>
+                {% for classification in user_classifications %}
+                <option value="{{ classification.id }}" {% if classification.id|stringformat:"s" == selected_classification_id %}selected{% endif %}>
+                    {{ classification.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3 col-6">
+            <label for="genreFilter" class="form-label">Género</label>
+            <select name="genre" id="genreFilter" class="form-select form-select-lg" onchange="this.form.submit()">
+                <option value="">-- Todos los géneros --</option>
+                {% for genre in user_genres %}
+                <option value="{{ genre.id }}" {% if genre.id|stringformat:"s" == selected_genre_id %}selected{% endif %}>
+                    {{ genre.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</form>
+
+{% if objects %}
+<div class="row row-cols-1 row-cols-md-3 g-4">
+    {% for obj in objects %}
+    <div class="col">
+        <div class="card h-100 shadow-sm border-0 rounded-3">
+            {% if obj.instance.image %}
+                <img src="{{ obj.instance.image.url }}" alt="{{ obj.instance.title }}" class="card-img-top"
+                     style="object-fit:cover; height:200px; width:100%; border-radius: 0.375rem 0.375rem 0 0;">
+            {% else %}
+                <img src="{% static 'images/default.png' %}" alt="Imagen por defecto" class="card-img-top"
+                     style="object-fit:cover; height:200px; width:100%; border-radius: 0.375rem 0.375rem 0 0;">
+            {% endif %}
+
+            <div class="card-body">
+                <h5 class="fw-bold mb-2">{{ obj.instance.title }}</h5>
+                {% if obj.instance.subtitle %}
+                    <p class="text-muted fst-italic mb-2">{{ obj.instance.subtitle }}</p>
+                {% endif %}
+                <ul class="list-unstyled mb-2">
+                    <li><strong>Autor:</strong> {{ obj.instance.author.first_name }} {{ obj.instance.author.last_name }}</li>
+                    <li>
+                        {% if obj.instance.drawer %}
+                            <strong>Estante-Cajón:</strong> {{ obj.instance.drawer.shelf.name }} - {{ obj.instance.drawer.name }}
+                        {% elif obj.instance.shelf %}
+                            <strong>Estante:</strong> {{ obj.instance.shelf.name }}
+                        {% else %}
+                            <em>Sin ubicación</em>
+                        {% endif %}
+                    </li>
+                    <li><strong>APA:</strong> <em>{{ obj.apa_citation }}</em></li>
+                </ul>
+
+                {% with last=obj.last_page|default:0 pages=obj.instance.page_count|default:0 %}
+                <div class="progress mb-2">
+                    {% if pages > 0 %}
+                        {% widthratio last pages 100 as percent %}
+                    {% else %}
+                        {% widthratio 0 1 100 as percent %}
+                    {% endif %}
+                    <div id="progressBar{{ obj.instance.pk }}" class="progress-bar bg-info" role="progressbar"
+                         style="width: {{ percent }}%;" aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100"
+                         data-page-count="{{ pages }}">
+                        {{ percent }}%
+                    </div>
+                </div>
+                {% endwith %}
+            </div>
+
+            <div class="card-footer bg-white border-0 d-flex justify-content-between flex-wrap">
+                {% if detail_url_name %}
+                    <a href="{% url detail_url_name obj.instance.pk %}" class="btn btn-sm btn-outline-primary mb-1">Detalles</a>
+                {% endif %}
+                {% if edit_url_name %}
+                    <a href="{% url edit_url_name obj.instance.pk %}" class="btn btn-sm btn-outline-warning mb-1">Editar</a>
+                {% endif %}
+                {% if delete_url_name %}
+                    <form method="POST" action="{% url delete_url_name obj.instance.pk %}" class="mb-1"
+                          onsubmit='return confirm("¿Seguro que quieres eliminar este libro?");'>
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+                    </form>
+                {% endif %}
+
+                <a href="{% if obj.instance.pdf_file %}{% url 'read_pdf' obj.instance.pk %}{% else %}{% url 'read_physical' obj.instance.pk %}{% endif %}" 
+                   class="btn btn-sm btn-outline-primary mb-1">
+                     {% if obj.instance.pdf_file %}📖 Iniciar lectura pdf{% else %}🔖 Separador virtual{% endif %}
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p>No hay libros registrados.</p>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i=0; i<cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Esta función actualiza la barra de progreso de libros sin PDF directamente desde read_books
+function saveLastPage(bookId, lastPage) {
+    fetch("{% url 'save_last_page' %}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie('csrftoken')
+        },
+        body: JSON.stringify({ book_id: bookId, last_page: parseInt(lastPage) })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.status === "ok"){
+            const progressBar = document.getElementById('progressBar' + bookId);
+            const pageCount = parseInt(progressBar.dataset.pageCount);
+            const percent = pageCount > 0 ? Math.round((lastPage / pageCount) * 100) : 0;
+            progressBar.style.width = percent + "%";
+            progressBar.innerText = percent + "%";
+        }
+    });
+}
+</script>
+{% endblock %}

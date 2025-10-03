@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<h1 class="mb-4">{{ title }}</h1>
+
+{% if create_url_name %}
+<div class="mb-4 d-flex justify-content-end">
+    <a href="{% url create_url_name %}" class="btn btn-success btn-lg">
+        <i class="bi bi-plus-lg"></i> Crear {{ title_singular }}
+    </a>
+</div>
+{% endif %}
+
+{% if objects %}
+<div class="row row-cols-1 row-cols-md-3 g-4">
+    {% for obj in objects %}
+    <div class="col">
+        <div class="card h-100 shadow-sm border-0 rounded-3">
+
+            {# 👇 Imagen del autor (si existe), o imagen por defecto #}
+            {% if obj.instance.image %}
+                <img src="{{ obj.instance.image.url }}" alt="{{ obj.instance.first_name }} {{ obj.instance.last_name }}" 
+                     class="card-img-top"
+                     style="object-fit:cover; height:200px; width:100%; border-radius: 0.375rem 0.375rem 0 0;">
+            {% else %}
+                <img src="{% static 'images/default.png' %}" alt="Imagen por defecto" 
+                     class="card-img-top"
+                     style="object-fit:cover; height:200px; width:100%; border-radius: 0.375rem 0.375rem 0 0;">
+            {% endif %}
+
+            <div class="card-body">
+                <h5 class="fw-bold mb-2">{{ obj.instance.first_name }} {{ obj.instance.last_name }}</h5>
+                {% if obj.instance.nationality %}
+                    <p class="text-muted">{{ obj.instance.nationality }}</p>
+                {% endif %}
+                <p>{{ obj.instance.birth_year|default:"¿?" }} - {{ obj.instance.death_year|default:"¿?" }}</p>
+                <p>Obras: {{ obj.instance.book_set.count }}</p>
+            </div>
+
+            <div class="card-footer bg-white border-0 d-flex justify-content-between flex-wrap">
+                {% if detail_url_name %}
+                    <a href="{% url detail_url_name obj.instance.pk %}" class="btn btn-sm btn-outline-primary mb-1">Detalles</a>
+                {% endif %}
+                {% if edit_url_name %}
+                    <a href="{% url edit_url_name obj.instance.pk %}" class="btn btn-sm btn-outline-warning mb-1">Editar</a>
+                {% endif %}
+                {% if delete_url_name %}
+                    <form method="POST" action="{% url delete_url_name obj.instance.pk %}" class="mb-1"
+                          onsubmit='return confirm("¿Seguro que quieres eliminar este autor?");'>
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p>No hay autores registrados.</p>
+{% endif %}
+{% endblock %}

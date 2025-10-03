@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>{{ title }}</h1>
+
+    {% if form.errors %}
+    <div class="alert alert-danger" role="alert">
+        Por favor corrige los errores en el formulario.
+    </div>
+    {% endif %}
+
+    <form method="POST" class="needs-validation" novalidate>
+        {% csrf_token %}
+
+        <div class="mb-3">
+            <label class="form-label">Nombre automático</label>
+            <div>
+                {% for radio in form.auto_name %}
+                <div class="form-check form-check-inline">
+                    {{ radio.tag }}
+                    <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label for="id_name" class="form-label">Nombre del estante</label>
+            <input type="text" name="name" id="id_name"
+                   class="form-control"
+                   {% if form.instance.pk %} value="{{ form.instance.name }}"{% endif %}
+                   placeholder="Escribe un nombre de estante...">
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            {% if form.instance.pk %}Guardar cambios{% else %}Crear estante{% endif %}
+        </button>
+    </form>
+</div>
+
+<script>
+    // Variables de Django convertidas a booleano JS y string seguro
+    const isEdit = "{{ form.instance.pk|default_if_none:'' }}" !== "";
+    const currentName = "{{ form.instance.name|default_if_none:''|escapejs }}";
+
+    const autoRadios = document.querySelectorAll('input[name="auto_name"]');
+    const nameInput = document.getElementById('id_name');
+
+    function toggleNameInput() {
+        const autoSelected = document.querySelector('input[name="auto_name"]:checked').value;
+
+        if (autoSelected === 'True') {
+            nameInput.disabled = true;
+            if (!isEdit) nameInput.value = '';
+        } else {
+            nameInput.disabled = false;
+            if (isEdit) nameInput.value = currentName;
+        }
+    }
+
+    toggleNameInput();
+
+    autoRadios.forEach(radio => {
+        radio.addEventListener('change', toggleNameInput);
+    });
+</script>
+{% endblock %}

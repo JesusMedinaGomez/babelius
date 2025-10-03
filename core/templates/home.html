@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="text-center my-5">
+    <h1 class="display-3 fw-bold" style="color:#8F1D34;">¡Bienvenido a Mi Biblioteca!</h1>
+    <p class="lead">Administra tus libros, autores, géneros y estantes de manera fácil y elegante.</p>
+
+    <div class="mt-4">
+        {% if user.is_authenticated %}
+            <a href="/libros" class="btn btn-primary btn-lg me-2">Ver libros</a>
+            <a href="/autores" class="btn btn-outline-primary btn-lg">Ver autores</a>
+        {% else %}
+            <a href="/auth/login" class="btn btn-primary btn-lg me-2">Iniciar sesión</a>
+            <a href="/auth/crear_cuenta" class="btn btn-outline-primary btn-lg">Crear cuenta</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

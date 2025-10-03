@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="detail-container mx-auto p-4" style="max-width: 800px;">
+    <h1 class="mb-4 border-bottom pb-2">{{ title }}</h1>
+
+    <div class="fields mt-3">
+        <div class="field mb-3">
+            <strong>Nombre:</strong> {{ classification.name }}
+        </div>
+    </div>
+
+    {% if related_genders %}
+    <div class="related-genders mt-4">
+        <h2 class="border-bottom pb-1">Géneros asociados</h2>
+        <ul class="list-group list-group-flush mt-2">
+            {% for gender in related_genders %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                {{ gender.name }}
+                <a href="{% url 'detail_gender' gender.pk %}" class="btn btn-sm btn-outline-secondary">Ver detalles</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if related_books %}
+    <div class="related-books mt-4">
+        <h2 class="border-bottom pb-1">Libros asociados</h2>
+        <ul class="list-group list-group-flush mt-2">
+            {% for book in related_books %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                {{ book.title }}
+                <a href="{% url 'detail_book' book.pk %}" class="btn btn-sm btn-outline-secondary">Ver detalles</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="mt-4 text-end">
+        <a href="{% url 'read_classifications' %}" class="btn btn-secondary btn-lg">
+            <i class="bi bi-arrow-left-circle"></i> Volver a la lista
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1 class="mb-4 text-center">{{ book.title }}</h1>
+
+{% if book.subtitle %}
+<p class="text-muted fst-italic mb-3 text-center">{{ book.subtitle }}</p>
+{% endif %}
+
+<ul class="list-unstyled mb-3">
+    <li><strong>Autor:</strong> {{ book.author.first_name }} {{ book.author.last_name }}</li>
+    <li>
+        {% if book.drawer %}
+            <strong>Estante-Cajón:</strong> {{ book.drawer.shelf.name }} - {{ book.drawer.name }}
+        {% elif book.shelf %}
+            <strong>Estante:</strong> {{ book.shelf.name }}
+        {% else %}
+            <em>Sin ubicación</em>
+        {% endif %}
+    </li>
+    <li><strong>Referencia APA:</strong> <em>{{ apa_citation }}</em></li>
+    {% if book.page_count %}
+        <li><strong>Número de páginas:</strong> {{ book.page_count }}</li>
+    {% endif %}
+</ul>
+
+{% if book.page_count %}
+<form method="post" class="mb-3" id="lastPageForm">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label for="id_last_page" class="form-label">Última página leída</label>
+        {{ form.last_page }}
+        {% if form.last_page.errors %}
+            <div class="text-danger">{{ form.last_page.errors }}</div>
+        {% endif %}
+        <small class="form-text text-muted">Este libro tiene {{ book.page_count }} páginas.</small>
+    </div>
+    <button type="submit" class="btn btn-primary">Guardar progreso</button>
+    <a href="{% url 'read_books' %}" class="btn btn-secondary">Cancelar</a>
+</form>
+
+<!-- Barra de progreso -->
+<div class="progress mt-3">
+    {% widthratio form.instance.last_page book.page_count 100 as percent %}
+    <div id="progressBar" class="progress-bar bg-info" role="progressbar"
+         style="width: {{ percent }}%;" aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100">
+        {{ percent }}%
+    </div>
+</div>
+
+{% else %}
+<div class="alert alert-warning mt-3">
+    <strong>Este libro no tiene páginas disponibles.</strong>
+    <br>
+    <a href="{% url 'update_book' book.pk %}" class="btn btn-sm btn-primary mt-2">Editar libro</a>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{% if book.page_count %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('id_last_page');
+    const progressBar = document.getElementById('progressBar');
+
+    function updateProgressBar() {
+        const val = parseInt(input.value) || 1;
+        const max = {{ book.page_count|default:0 }};
+        const percent = max > 0 ? Math.round((val / max) * 100) : 0;
+        progressBar.style.width = percent + "%";
+        progressBar.innerText = percent + "%";
+        progressBar.setAttribute('aria-valuenow', percent);
+    }
+
+    input.addEventListener('input', updateProgressBar);
+
+    // Inicializa la barra al cargar
+    updateProgressBar();
+});
+</script>
+{% endif %}
+{% endblock %}
