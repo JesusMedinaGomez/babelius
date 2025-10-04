@@ -1,9 +1,14 @@
-#!/usr/bin/env_bash
+#!/bin/bash
 # exit on error
 set -o errexit
 
-# poetry install
+echo "📦 Instalando dependencias..."
 pip install -r requirements.txt
 
-python manage.py collectstatic --no-input
+echo "📂 Colectando archivos estáticos..."
+python manage.py collectstatic --noinput
+
+echo "🗃️ Aplicando migraciones..."
 python manage.py migrate
+
+echo "✅ Build completado!"
